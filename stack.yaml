@@ -1,0 +1,7 @@
+flags: {}
+extra-package-dbs: []
+packages:
+- '.'
+extra-deps:
+- AC-Random-0.1
+resolver: lts-9.6
