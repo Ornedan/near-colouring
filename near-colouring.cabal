@@ -20,11 +20,14 @@ library
 --  other-modules:       Lib.ColourSource
   ghc-options:         -O2
   build-depends:       array
+                     , AC-Random
                      , base >= 4.7 && < 5
                      , colour
                      , mwc-random
+                     , mersenne-random-pure64
                      , primitive >= 0.6.1.0
                      , random
+                     , tf-random
                      , vector >= 0.12
   default-language:    Haskell2010
 
@@ -38,7 +41,7 @@ executable near-colouring-exe
                      , near-colouring
                      , random
                      , vector  >= 0.12
-                     , AC-Random >= 0.1
+                     , AC-Random
                      , mwc-random >= 0.13.6.0
   default-language:    Haskell2010
 

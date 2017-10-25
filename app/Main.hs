@@ -46,13 +46,17 @@ runNC args = do
 --  let perms = permutationPicks 0xffffff (mkStdGen 0)
 --  print $ V.foldl' (+) 0 perms
 
---main = print $ last $ colours $ randomUniqueColourSequenceStd (mkStdGen 0)
---main = print $ last $ colours $ randomUniqueColourSequenceMWCShuffle 0
---main = print $ last $ colours $ randomUniqueColourSequenceMWC 0
---main = print $ last $ colours $ randomUniqueColourSequenceMWC' 0
---main = print $ last $ colours $ randomUniqueColourSequenceMWC'' 0
---main = print $ V.last $ randomUniqueColourSequenceMWC'' 0
-main = print $ V.drop 0xfffff0 $ randomUniqueColourSequenceMWC''' 0
+--main = print $ V.drop 0xfffff0 $ randomUniqueColourSequenceMWCV 0
+
+
+--main = print $ drop 0xfffff0 $ colours $ randomUniqueColourSequenceStd 0            -- ~46s
+--main = print $ drop 0xfffff0 $ colours $ randomUniqueColourSequenceMP64 0           -- ~40s
+--main = print $ drop 0xfffff0 $ colours $ randomUniqueColourSequenceMWCShuffle 0     -- ~63s
+--main = print $ drop 0xfffff0 $ colours $ randomUniqueColourSequenceMWC 0            -- ~62s
+--main = print $ drop 0xfffff0 $ colours $ randomUniqueColourSequenceAC 0             -- ~30s
+--main = print $ drop 0xfffff0 $ colours $ randomUniqueColourSequenceTF 0             -- ~44s
+--main = print $ drop 0xfffff0 $ colours $ randomUniqueColourSequenceLowerBoundLoop 0 -- ~23s
+--main = print $ drop 0xfffff0 $ colours $ randomUniqueColourSequenceLowerBoundFor 0  -- ~23s
 
 {-
 u :: ST s Word32
