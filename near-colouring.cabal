@@ -31,7 +31,8 @@ executable near-colouring-exe
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -O2
-  build-depends:       array
+  build-depends:       AC-Random
+                     , array
                      , base
                      , cmdargs
                      , near-colouring

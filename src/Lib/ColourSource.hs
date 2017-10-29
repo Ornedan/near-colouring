@@ -21,25 +21,31 @@ import Random.MWC.Pure
 newtype ColourSource = CS { colours :: [RGB Word8] }
 
 
-randomUniqueColourSequence :: Int -> ColourSource
-randomUniqueColourSequence rngSeed = CS $ V.toList rgbV
+randomUniqueColourSequence :: Seed -> (ColourSource, Seed)
+randomUniqueColourSequence rng0 = (CS $ V.toList rgbV, rng')
   where
-    rgbV     = V.map toRGB coloursV
-    coloursV = runST $ do
-      let rng0 = seed [fromIntegral rngSeed]
+    rgbV             = V.map toRGB coloursV
+    (coloursV, rng') = runST $ do
       vec <- U.unsafeThaw $ U.enumFromN 0 0x1000000
-      loop vec rng0 0xffffff
-      U.unsafeFreeze vec >>= return . U.convert
-    loop vec !rng 0 = return vec
+      rng' <- loop vec rng0 0xffffff
+      vec' <- U.convert <$> U.unsafeFreeze vec
+      return (vec', rng')
+      --U.unsafeFreeze vec >>= return . U.convert
+    loop vec !rng 0 = return rng
     loop vec !rng i = do
       let (to, rng') = range_random (0, i) rng
       UM.swap vec i to
       loop vec rng' (i - 1)
 
 
-randomColourSequence :: Int -> ColourSource
-randomColourSequence rngSeed = CS $ map toRGB $ genWords $ seed [fromIntegral rngSeed]
+randomColourSequence :: Seed -> (ColourSource, Seed)
+randomColourSequence rng0 = (CS $ map toRGB $ genWords rng4, rng5)
   where
+    (rng4, rng5) = let (w1, rng1) = bounded_random rng0
+                       (w2, rng2) = bounded_random rng1
+                       (w3, rng3) = bounded_random rng2
+                       (w4, rng4) = bounded_random rng3
+                   in (rng4, seed [w1, w2, w3, w4])
     genWords :: Seed -> [Word32]
     genWords !rng = let (word, rng') = bounded_random rng
                     in word:genWords rng'

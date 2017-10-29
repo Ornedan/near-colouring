@@ -5,9 +5,12 @@ module Main where
 import Control.Monad.ST
 import Data.Bits
 import Data.List
+import Random.MWC.Pure
 import System.Console.CmdArgs
+
 import Lib
 import Lib.ColourSource
+
 
 data NearColouring = NC { width  :: Int
                         , height :: Int
@@ -21,6 +24,6 @@ nearColouring = NC { width  = def &= argPos 0 &= typ "WIDTH"
 runNC args = do
   print args
 
-main = cmdArgs nearColouring >>= runNC
---main = print $ drop 0xfffff0 $ colours $ randomUniqueColourSequence 0 -- ~30s
---main = print $ take 0xf $ drop 0xfffff0 $ colours $ randomColourSequence 0       -- ~2.5s
+--main = cmdArgs nearColouring >>= runNC
+--main = print $ drop 0xfffff0 $ colours $ fst $ randomUniqueColourSequence $ seed [0]       -- ~30s
+main = print $ take 0xf $ drop 0xfffff0 $ colours $ fst $ randomColourSequence $ seed [0]  -- ~2.5s
