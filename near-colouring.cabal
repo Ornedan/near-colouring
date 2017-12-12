@@ -17,14 +17,17 @@ library
   hs-source-dirs:      src
   exposed-modules:     Lib
                        Lib.ColourSource
+                       Lib.ImageConstruction
 --  other-modules:       Lib.ColourSource
   ghc-options:         -O2
   build-depends:       AC-Random
+                     , JuicyPixels
                      , array
                      , base >= 4.7 && < 5
                      , colour
-                     , primitive >= 0.6.1.0
-                     , vector >= 0.12
+                     , containers
+                     , primitive
+                     , vector
   default-language:    Haskell2010
 
 executable near-colouring-exe
@@ -32,10 +35,12 @@ executable near-colouring-exe
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -O2
   build-depends:       AC-Random
+                     , JuicyPixels
                      , array
                      , base
                      , cmdargs
                      , near-colouring
+                     , optparse-applicative
   default-language:    Haskell2010
 
 test-suite near-colouring-test
