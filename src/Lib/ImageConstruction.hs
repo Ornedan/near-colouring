@@ -23,7 +23,6 @@ import Lib.ColourSource
 {-
 
 TODO:
-- wraparound
 
 -}
 
@@ -69,11 +68,6 @@ fromDistanceNextPosGen combine canvas colour@(PixelRGBA8 r g b _) wrap available
   where
     score (x, y) = do
       adjenctColours <- paintedAdjenct canvas wrap x y
-
-      --let distances = map (\(pos, PixelRGBA8 r' g' b' _) -> (fromIntegral $ r - r') +
-      --                                                      (fromIntegral $ g - g') +
-      --                                                      (fromIntegral $ b - b'))
-      --                adjenctColours
       let distances = map (colourDistance colour . snd) adjenctColours
       let result = combine distances
 --      trace (printf "#%x%x%x @(%d, %d), score %d, distances %s" r g b x y result (show distances)) (return ())
@@ -81,7 +75,7 @@ fromDistanceNextPosGen combine canvas colour@(PixelRGBA8 r g b _) wrap available
     better posN best@(posB, scoreB) = do
       scoreN <- score posN
       --trace (printf " score at (%d, %d): %d" (fst posN) (snd posN) scoreN) (return ())
-      if scoreN < scoreB || (scoreN == scoreB && posN < posB)
+      if scoreN < scoreB
         then return (posN, scoreN)
         else return best
 {-# INLINE fromDistanceNextPosGen #-}
@@ -160,6 +154,7 @@ emptyAdjenct canvas wrap x y = do
     if a == 0
       then return $ Just pos
       else return Nothing
+{-# INLINE emptyAdjenct #-}
 
 paintedAdjenct :: (PrimMonad m) => MutableImage (PrimState m) PixelRGBA8 -> Bool -> Int -> Int -> m [((Int, Int), PixelRGBA8)]
 paintedAdjenct canvas wrap x y = do
@@ -170,6 +165,7 @@ paintedAdjenct canvas wrap x y = do
     if a /= 0
       then return $ Just (pos, colour)
       else return Nothing
+{-# INLINE paintedAdjenct #-}
 
 
 adjenct :: Int -> Int -> Bool -> Int -> Int -> [(Int, Int)]
