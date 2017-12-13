@@ -82,15 +82,19 @@ fromDistanceNextPosGen combine canvas colour@(PixelRGBA8 r g b _) wrap available
 
 nextPosMinOfMinDists :: (PrimMonad m) => NextPosGen m
 nextPosMinOfMinDists = fromDistanceNextPosGen $ minimumBy compare
+{-# INLINE nextPosMinOfMinDists #-}
 
 nextPosMinOfMaxDists :: (PrimMonad m) => NextPosGen m
 nextPosMinOfMaxDists = fromDistanceNextPosGen $ maximumBy compare
+{-# INLINE nextPosMinOfMaxDists #-}
 
 nextPosMinOfSumDists :: (PrimMonad m) => NextPosGen m
 nextPosMinOfSumDists = fromDistanceNextPosGen $ sum
+{-# INLINE nextPosMinOfSumDists #-}
 
 nextPosMinOfAvgDists :: (PrimMonad m) => NextPosGen m
 nextPosMinOfAvgDists = fromDistanceNextPosGen $ \scores -> sum scores `div` length scores
+{-# INLINE nextPosMinOfAvgDists #-}
 
 
 --rollImage :: (PrimMonad m) => Seed -> StartPosGen -> NextPosGen m -> ColourSource -> Bool -> Int -> Int -> m (Image PixelRGBA8)
