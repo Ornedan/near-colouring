@@ -53,7 +53,7 @@ colourDistance (PixelRGBA8 r1 g1 b1 _) (PixelRGBA8 r2 g2 b2 _) = result
 --    debug = printf "distance(#%02x%02x%02x, #%02x%02x%02x): %d + %d + %d = %d" r1 g1 b1 r2 g2 b2 rd gd bd result
 {-# INLINE colourDistance #-}
 
-type NextPosGen m = (PrimMonad m) => MutableImage (PrimState m) PixelRGBA8 -> PixelRGBA8 -> Bool -> Set (Int, Int) -> m ((Int, Int), Set (Int, Int))
+type NextPosGen m = (PrimMonad m) => MutableImage (PrimState m) PixelRGBA8 -> PixelRGBA8 -> Bool -> Set (Int, Int) -> m (Int, Int)
 
 fromDistanceNextPosGen :: (PrimMonad m) => ([Int] -> Int) -> NextPosGen m
 fromDistanceNextPosGen combine canvas colour@(PixelRGBA8 r g b _) wrap available = do
@@ -64,7 +64,7 @@ fromDistanceNextPosGen combine canvas colour@(PixelRGBA8 r g b _) wrap available
   (posB, scoreB) <- foldrM better (pos0, score0) available
   --trace (printf " found (%d, %d)" (fst posB) (snd posB)) (return ())
   --trace (printf "Position for #%02x%02x%02x: (%d, %d) with score %d (%d candidates)" r g b (fst posB) (snd posB) scoreB (Set.size available)) (return ())
-  return (posB, Set.delete posB available)
+  return posB
   where
     score (x, y) = do
       adjenctColours <- paintedAdjenct canvas wrap x y
@@ -130,14 +130,18 @@ rollImage rng0 spg npg (CS (c0:cs)) wrap w h = do
     paint canvas (c:cs) available
       | Set.null available = return ()
       | otherwise          = do
-          ((x, y), available') <- npg canvas c wrap available
+          -- Where to put colour `c`?
+          pos@(x, y) <- npg canvas c wrap available
+
+          -- Paint it
           writePixel canvas x y c
 
-          let PixelRGBA8 r g b a = c
-          --printf "#%02x%02x02%x @ (%d, %d)\n" r g b x y
+          -- Update next position candidates
+          empty <- emptyAdjenct canvas wrap x y
+          let available' = (Set.delete pos available) `Set.union` (Set.fromList empty)
 
-          available'' <- Set.fromList <$> emptyAdjenct canvas wrap x y      
-          paint canvas cs (available'' `Set.union` available')
+          -- Repeat
+          paint canvas cs available'
     paint canvas []     available
       | Set.null available = return ()
       | otherwise          = error (printf "Out of colour, left unpainted at least: %s" (show available))
