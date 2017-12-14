@@ -71,7 +71,7 @@ fromDistanceNextPosGen combine canvas colour@(PixelRGBA8 r g b _) wrap available
       let distances = map (colourDistance colour . snd) adjenctColours
       let result = combine distances
 --      trace (printf "#%x%x%x @(%d, %d), score %d, distances %s" r g b x y result (show distances)) (return ())
-      return result
+      return $! result
     better posN best@(posB, scoreB) = do
       scoreN <- score posN
       --trace (printf " score at (%d, %d): %d" (fst posN) (snd posN) scoreN) (return ())
@@ -145,12 +145,6 @@ rollImage rng0 spg npg (CS (c0:cs)) wrap w h = do
     paint canvas []     available
       | Set.null available = return ()
       | otherwise          = error (printf "Out of colour, left unpainted at least: %s" (show available))
-
-    bestPosition _      _     (x, y)        []            available' = (x, y, available')
-    bestPosition canvas colour best@(bx, by) (a@(x, y):as) available' = do
-      if undefined --posComp canvas colour best a
-        then bestPosition canvas colour best as (a:available')
-        else bestPosition canvas colour a as (best:available')
 
 
 emptyAdjenct :: (PrimMonad m) => MutableImage (PrimState m) PixelRGBA8 -> Bool -> Int -> Int -> m [(Int, Int)]
