@@ -13,7 +13,6 @@ where
 import Codec.Picture.Types
 import Control.Monad.ST
 import Data.Bits
-import Data.Colour.SRGB
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as UM
@@ -28,16 +27,15 @@ ascendingColourSequence :: ColourSource
 ascendingColourSequence = CS $ map toRGB [0 .. 0xffffff]
 
 randomUniqueColourSequence :: Seed -> (ColourSource, Seed)
-randomUniqueColourSequence rng0 = (CS $ V.toList rgbV, rng')
+randomUniqueColourSequence rng0 = (CS $ V.toList rgbV, rng1)
   where
     rgbV             = V.map toRGB coloursV
-    (coloursV, rng') = runST $ do
+    (coloursV, rng1) = runST $ do
       vec <- U.unsafeThaw $ U.enumFromN 0 0x1000000
       rng' <- loop vec rng0 0xffffff
       vec' <- U.convert <$> U.unsafeFreeze vec
       return (vec', rng')
-      --U.unsafeFreeze vec >>= return . U.convert
-    loop vec !rng 0 = return rng
+    loop _   !rng 0 = return rng
     loop vec !rng i = do
       let (to, rng') = range_random (0, i) rng
       UM.swap vec i to
@@ -45,9 +43,9 @@ randomUniqueColourSequence rng0 = (CS $ V.toList rgbV, rng')
 
 
 randomColourSequence :: Seed -> (ColourSource, Seed)
-randomColourSequence rng0 = (CS $ map toRGB $ genWords rng4, rng5)
+randomColourSequence rng0 = (CS $ map toRGB $ genWords rng5, rng6)
   where
-    (rng4, rng5) = let (w1, rng1) = bounded_random rng0
+    (rng5, rng6) = let (w1, rng1) = bounded_random rng0
                        (w2, rng2) = bounded_random rng1
                        (w3, rng3) = bounded_random rng2
                        (w4, rng4) = bounded_random rng3

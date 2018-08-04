@@ -13,10 +13,10 @@ import Data.Foldable
 import Data.Maybe
 import Data.Set (Set)
 import qualified Data.Set as Set
+import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector.Unboxed.Mutable as VUM
 import Random.MWC.Pure
 import Text.Printf
-
-import Debug.Trace
 
 import Lib.ColourSource
 
@@ -56,12 +56,12 @@ colourDistance (PixelRGBA8 r1 g1 b1 _) (PixelRGBA8 r2 g2 b2 _) = result
 type NextPosGen m = (PrimMonad m) => MutableImage (PrimState m) PixelRGBA8 -> PixelRGBA8 -> Bool -> Set (Int, Int) -> m (Int, Int)
 
 fromDistanceNextPosGen :: (PrimMonad m) => ([Int] -> Int) -> NextPosGen m
-fromDistanceNextPosGen combine canvas colour@(PixelRGBA8 r g b _) wrap available = do
+fromDistanceNextPosGen combine canvas colour wrap available = do
   let pos0 = Set.findMin available
   score0 <- score pos0
   --trace (printf "Position for #%02x%02x%02x" r g b) (return ())
   --trace (printf " score at (%d, %d): %d" (fst pos0) (snd pos0) score0) (return ())
-  (posB, scoreB) <- foldrM better (pos0, score0) available
+  (posB, _scoreB) <- foldrM better (pos0, score0) available
   --trace (printf " found (%d, %d)" (fst posB) (snd posB)) (return ())
   --trace (printf "Position for #%02x%02x%02x: (%d, %d) with score %d (%d candidates)" r g b (fst posB) (snd posB) scoreB (Set.size available)) (return ())
   return posB
@@ -72,7 +72,7 @@ fromDistanceNextPosGen combine canvas colour@(PixelRGBA8 r g b _) wrap available
       let result = combine distances
 --      trace (printf "#%x%x%x @(%d, %d), score %d, distances %s" r g b x y result (show distances)) (return ())
       return $! result
-    better posN best@(posB, scoreB) = do
+    better posN best@(_posB, scoreB) = do
       scoreN <- score posN
       --trace (printf " score at (%d, %d): %d" (fst posN) (snd posN) scoreN) (return ())
       if scoreN < scoreB
@@ -105,12 +105,13 @@ rollImage :: Seed
           -> Bool
           -> Int
           -> Int
-          -> IO (Image PixelRGBA8)
+          -> IO (Image PixelRGBA8, VU.Vector (Int, Int))
 rollImage rng0 spg npg (CS (c0:cs)) wrap w h = do
   canvas <- newMutableImage w h
+  positions <- VUM.unsafeNew $ w * h
 
   -- Roll start
-  let (x0, y0, rng1) = spg w h rng0
+  let (x0, y0, _rng1) = spg w h rng0
 
   -- Storage for positions-that-could-be-filled
   -- - list or vector?
@@ -119,15 +120,21 @@ rollImage rng0 spg npg (CS (c0:cs)) wrap w h = do
 
   -- Roll first pixel
   writePixel canvas x0 y0 c0
+  VUM.write positions 0 (x0, y0)
 
   -- Loop until full
-  paint canvas cs available0
+  paint canvas positions 1 cs available0
 
-  unsafeFreezeImage canvas
+  -- Export results
+  canvas' <- unsafeFreezeImage canvas
+  positions' <- VU.unsafeFreeze positions
+  return (canvas', positions')
 
   where
-    paint :: MutableImage (PrimState IO) PixelRGBA8 -> [PixelRGBA8] -> Set (Int, Int) -> IO ()
-    paint canvas (c:cs) available
+    paint :: MutableImage (PrimState IO) PixelRGBA8
+          -> VUM.MVector (PrimState IO) (Int, Int) -> Int
+          -> [PixelRGBA8] -> Set (Int, Int) -> IO ()
+    paint canvas positions !nth (c:cs') available
       | Set.null available = return ()
       | otherwise          = do
           -- Where to put colour `c`?
@@ -135,14 +142,15 @@ rollImage rng0 spg npg (CS (c0:cs)) wrap w h = do
 
           -- Paint it
           writePixel canvas x y c
+          VUM.write positions nth (x, y)
 
           -- Update next position candidates
           empty <- emptyAdjenct canvas wrap x y
           let available' = (Set.delete pos available) `Set.union` (Set.fromList empty)
 
           -- Repeat
-          paint canvas cs available'
-    paint canvas []     available
+          paint canvas positions (nth + 1) cs' available'
+    paint _      _         _    []     available
       | Set.null available = return ()
       | otherwise          = error (printf "Out of colour, left unpainted at least: %s" (show available))
 
@@ -187,19 +195,21 @@ right w h wrap x y = if wrap then rightW  w h x y else rightNW w h x y
 {-# INLINE left  #-}
 {-# INLINE right #-}
 
-upNW    w h x y = let !y' = y + 1 in if y' <  h then Just (x, y') else Nothing
-downNW  w h x y = let !y' = y - 1 in if y' >= 0 then Just (x, y') else Nothing
-leftNW  w h x y = let !x' = x - 1 in if x' >= 0 then Just (x', y) else Nothing
-rightNW w h x y = let !x' = x + 1 in if x' <  w then Just (x', y) else Nothing
+upNW, downNW, leftNW, rightNW, upW, downW, leftW, rightW :: Int -> Int -> Int -> Int -> Maybe (Int, Int)
+-- no-wrap
+upNW    _ h x y = let !y' = y + 1 in if y' <  h then Just (x, y') else Nothing
+downNW  _ _ x y = let !y' = y - 1 in if y' >= 0 then Just (x, y') else Nothing
+leftNW  _ _ x y = let !x' = x - 1 in if x' >= 0 then Just (x', y) else Nothing
+rightNW w _ x y = let !x' = x + 1 in if x' <  w then Just (x', y) else Nothing
 {-# INLINE upNW    #-}
 {-# INLINE downNW  #-}
 {-# INLINE leftNW  #-}
 {-# INLINE rightNW #-}
-
-upW    w h x y = let !y' = (y + 1) `mod` h in Just (x, y')
-downW  w h x y = let !y' = (y - 1) `mod` h in Just (x, y')
-leftW  w h x y = let !x' = (x - 1) `mod` w in Just (x', y)
-rightW w h x y = let !x' = (x + 1) `mod` w in Just (x', y)
+-- wrap
+upW    _ h x y = let !y' = (y + 1) `mod` h in Just (x, y')
+downW  _ h x y = let !y' = (y - 1) `mod` h in Just (x, y')
+leftW  w _ x y = let !x' = (x - 1) `mod` w in Just (x', y)
+rightW w _ x y = let !x' = (x + 1) `mod` w in Just (x', y)
 {-# INLINE upW    #-}
 {-# INLINE downW  #-}
 {-# INLINE leftW  #-}
@@ -207,6 +217,6 @@ rightW w h x y = let !x' = (x + 1) `mod` w in Just (x', y)
 
 
 excluding :: [a] -> Int -> [a]
-(x:xs) `excluding` 0   = xs
+(_:xs) `excluding` 0   = xs
 (x:xs) `excluding` nth = x:xs `excluding` (nth - 1)
 []     `excluding` _   = error "excluding: too short list"
