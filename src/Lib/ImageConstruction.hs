@@ -7,7 +7,6 @@ where
 
 import Codec.Picture
 import Codec.Picture.Types
-import Control.Monad
 import Control.Monad.Primitive
 import Data.Foldable
 import Data.Maybe
@@ -68,7 +67,7 @@ fromDistanceNextPosGen combine canvas colour wrap available = do
   where
     score (x, y) = do
       adjenctColours <- paintedAdjenct canvas wrap x y
-      let distances = map (colourDistance colour . snd) adjenctColours
+      let distances = map (colourDistance colour) adjenctColours
       let result = combine distances
 --      trace (printf "#%x%x%x @(%d, %d), score %d, distances %s" r g b x y result (show distances)) (return ())
       return $! result
@@ -159,22 +158,28 @@ emptyAdjenct :: (PrimMonad m) => MutableImage (PrimState m) PixelRGBA8 -> Bool -
 emptyAdjenct canvas wrap x y = do
   let w = mutableImageWidth canvas
   let h = mutableImageHeight canvas
-  liftM catMaybes $ forM (adjenct w h wrap x y) $ \pos@(x', y') -> do
-    PixelRGBA8 _ _ _ a <- readPixel canvas x' y'
-    if a == 0
-      then return $ Just pos
-      else return Nothing
+  go (adjenct w h wrap x y) []
+  where
+    go []                  acc = return acc
+    go (pos@(x', y'):poss) acc = do
+      PixelRGBA8 _ _ _ a <- readPixel canvas x' y'
+      if a == 0
+        then go poss (pos:acc)
+        else go poss acc
 {-# INLINE emptyAdjenct #-}
 
-paintedAdjenct :: (PrimMonad m) => MutableImage (PrimState m) PixelRGBA8 -> Bool -> Int -> Int -> m [((Int, Int), PixelRGBA8)]
+paintedAdjenct :: (PrimMonad m) => MutableImage (PrimState m) PixelRGBA8 -> Bool -> Int -> Int -> m [PixelRGBA8]
 paintedAdjenct canvas wrap x y = do
   let w = mutableImageWidth canvas
   let h = mutableImageHeight canvas
-  liftM catMaybes $ forM (adjenct w h wrap x y) $ \pos@(x', y') -> do
-    colour@(PixelRGBA8 _ _ _ a) <- readPixel canvas x' y'
-    if a /= 0
-      then return $ Just (pos, colour)
-      else return Nothing
+  go (adjenct w h wrap x y) []
+  where
+    go []                  acc = return acc
+    go ((x', y'):poss) acc = do
+      colour@(PixelRGBA8 _ _ _ a) <- readPixel canvas x' y'
+      if a /= 0
+        then go poss (colour:acc)
+        else go poss acc
 {-# INLINE paintedAdjenct #-}
 
 
