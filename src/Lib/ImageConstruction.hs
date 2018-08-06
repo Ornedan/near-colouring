@@ -162,7 +162,7 @@ emptyAdjenct canvas wrap x y = do
   where
     go []                  acc = return acc
     go (pos@(x', y'):poss) acc = do
-      PixelRGBA8 _ _ _ a <- readPixel canvas x' y'
+      PixelRGBA8 _ _ _ a <- unsafeReadPixel (mutableImageData canvas) (mutablePixelBaseIndex canvas x' y')
       if a == 0
         then go poss (pos:acc)
         else go poss acc
@@ -176,7 +176,7 @@ paintedAdjenct canvas wrap x y = do
   where
     go []                  acc = return acc
     go ((x', y'):poss) acc = do
-      colour@(PixelRGBA8 _ _ _ a) <- readPixel canvas x' y'
+      colour@(PixelRGBA8 _ _ _ a) <- unsafeReadPixel (mutableImageData canvas) (mutablePixelBaseIndex canvas x' y')
       if a /= 0
         then go poss (colour:acc)
         else go poss acc
