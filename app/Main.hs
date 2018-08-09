@@ -83,6 +83,7 @@ pga = subparser
 
 
 data OutTypeArg = GIF
+                | GIFAnim Int
                 | PNG
                 deriving (Show)
 
@@ -91,7 +92,10 @@ ota = subparser
     $ commandGroup "Output type"
    <> metavar "TYPE"
    <> command "gif" (info (pure GIF) fullDesc)
+   <> command "gif-anim" (info gifAnim fullDesc)
    <> command "png" (info (pure PNG) fullDesc)
+  where
+    gifAnim = GIFAnim <$> argument auto (metavar "N")
 
 
 main :: IO ()
@@ -116,8 +120,9 @@ main' conf = do
         PosGenMinSum -> nextPosMinOfSumDists
         PosGenMinAvg -> nextPosMinOfAvgDists
       ofg = case outType conf of
-        PNG -> exportPNG
-        GIF -> exportGIFAnimation
+        PNG       -> exportPNG
+        GIF       -> exportGIF
+        GIFAnim n -> exportGIFAnimation n
 
   (img, order) <- rollImage rng0 spg npg colors (wrap conf) (width conf) (height conf)
   
