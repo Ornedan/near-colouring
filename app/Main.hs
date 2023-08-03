@@ -35,6 +35,7 @@ nc = NC
 
 
 data StartPosArg = StartRandom
+                 | StartCorners
                  | StartFixed Int Int
                  deriving (Show)
 
@@ -43,6 +44,7 @@ spa = subparser
     $ commandGroup "Start position"
    <> metavar "START"
    <> command "random" (info (pure StartRandom) fullDesc)
+   <> command "corners" (info (pure StartCorners) fullDesc)
    <> command "fixed" (info fixed fullDesc)
   where
     fixed = StartFixed
@@ -108,6 +110,7 @@ main' conf = do
   let rng0 = seed [fromIntegral $ rngSeed conf]
       spg  = case start conf of
         StartRandom    -> startPosRandom
+        StartCorners   -> startPosCorners
         StartFixed x y -> startPosFixed x y
       (colors, _rng1) = case colSrc conf of
         ColourSourceAsc          -> (ascendingColourSequence, rng0)
@@ -125,7 +128,7 @@ main' conf = do
         GIFAnim n -> exportGIFAnimation n
 
   (img, order) <- rollImage rng0 spg npg colors (wrap conf) (width conf) (height conf)
-  
+
   putStrLn "Image rolled, saving"
-  
+
   ofg img order (outPath conf)

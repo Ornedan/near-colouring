@@ -19,27 +19,27 @@ import Text.Printf
 
 import Lib.ColourSource
 
-{-
 
-TODO:
-
--}
-
-
-type StartPosGen = Int -> Int -> Seed -> (Int, Int, Seed)
+type StartPosGen = Int -> Int -> Seed -> ([(Int, Int)], Seed)
 
 startPosFixed :: Int -> Int -> StartPosGen
 startPosFixed x y w h rng
   | x < 0 || x >= w || y < 0 || y >= h =
     error $ printf "Fixed start position (%d, %d) out of bounds (%d, %d)" x y w h
-  | otherwise                          = (x, y, rng)
+  | otherwise                          = ([(x, y)], rng)
 
 startPosRandom :: StartPosGen
-startPosRandom w h rng0 = (x, y, rng2)
+startPosRandom w h rng0 = ([(x, y)], rng2)
   where
     (x, rng1) = range_random (0, w - 1) rng0
     (y, rng2) = range_random (0, h - 1) rng1
 
+startPosCorners :: StartPosGen
+startPosCorners w h rng = ([(0, 0)
+                           ,(0, h - 1)
+                           ,(w - 1, 0)
+                           ,(w - 1, h - 1)]
+                          ,rng)
 
 colourDistance :: PixelRGBA8 -> PixelRGBA8 -> Int
 colourDistance (PixelRGBA8 r1 g1 b1 _) (PixelRGBA8 r2 g2 b2 _) = result
@@ -96,33 +96,30 @@ nextPosMinOfAvgDists = fromDistanceNextPosGen $ \scores -> sum scores `div` leng
 {-# INLINE nextPosMinOfAvgDists #-}
 
 
---rollImage :: (PrimMonad m) => Seed -> StartPosGen -> NextPosGen m -> ColourSource -> Bool -> Int -> Int -> m (Image PixelRGBA8)
-rollImage :: Seed
+rollImage :: (PrimMonad m) => Seed
           -> StartPosGen
-          -> NextPosGen IO
+          -> NextPosGen m
           -> ColourSource
           -> Bool
           -> Int
           -> Int
-          -> IO (Image PixelRGBA8, VU.Vector (Int, Int))
-rollImage rng0 spg npg (CS (c0:cs)) wrap w h = do
+          -> m (Image PixelRGBA8, VU.Vector (Int, Int))
+rollImage rng0 spg npg (CS cs) wrap w h = do
   canvas <- newMutableImage w h
   positions <- VUM.unsafeNew $ w * h
 
   -- Roll start
-  let (x0, y0, _rng1) = spg w h rng0
+  let (firsts, _rng1) = spg w h rng0
 
-  -- Storage for positions-that-could-be-filled
-  -- - list or vector?
-  -- 
-  let available0 = Set.fromList $ adjenct w h wrap x0 y0
+  -- Paint start positions
+  let paintFirsts (pos, c, nth) available = update canvas positions nth pos c available
+  available <- foldrM paintFirsts Set.empty $ zip3 firsts cs [0..]
 
-  -- Roll first pixel
-  writePixel canvas x0 y0 c0
-  VUM.write positions 0 (x0, y0)
+  let firstsCount = length firsts
+      cs'         = drop firstsCount cs
 
   -- Loop until full
-  paint canvas positions 1 cs available0
+  paint canvas positions firstsCount cs' available
 
   -- Export results
   canvas' <- unsafeFreezeImage canvas
@@ -130,22 +127,25 @@ rollImage rng0 spg npg (CS (c0:cs)) wrap w h = do
   return (canvas', positions')
 
   where
-    paint :: MutableImage (PrimState IO) PixelRGBA8
-          -> VUM.MVector (PrimState IO) (Int, Int) -> Int
-          -> [PixelRGBA8] -> Set (Int, Int) -> IO ()
+    update canvas positions nth pos@(x, y) c available = do
+      -- Paint on canvas
+      writePixel canvas x y c
+
+      -- Update paint order
+      VUM.write positions nth (x, y)
+
+      -- Update next-available set
+      emptys <- emptyAdjenct canvas wrap x y
+      return $ (Set.delete pos available) `Set.union` (Set.fromList emptys)
+
     paint canvas positions !nth (c:cs') available
       | Set.null available = return ()
       | otherwise          = do
-          -- Where to put colour `c`?
-          pos@(x, y) <- npg canvas c wrap available
+          -- Find where to put colour `c`?
+          pos <- {-# SCC nextPixel #-} npg canvas c wrap available
 
-          -- Paint it
-          writePixel canvas x y c
-          VUM.write positions nth (x, y)
-
-          -- Update next position candidates
-          empty <- emptyAdjenct canvas wrap x y
-          let available' = (Set.delete pos available) `Set.union` (Set.fromList empty)
+          -- Place it
+          available' <- update canvas positions nth pos c available
 
           -- Repeat
           paint canvas positions (nth + 1) cs' available'
@@ -191,9 +191,9 @@ adjenct w h wrap x y = catMaybes [up    w h wrap x y,
 {-# INLINE adjenct #-}
 
 up, down, left, right :: Int -> Int -> Bool -> Int -> Int -> Maybe (Int, Int)
-up    w h wrap x y = if wrap then upW     w h x y else upNW    w h x y 
-down  w h wrap x y = if wrap then downW   w h x y else downNW  w h x y 
-left  w h wrap x y = if wrap then leftW   w h x y else leftNW  w h x y 
+up    w h wrap x y = if wrap then upW     w h x y else upNW    w h x y
+down  w h wrap x y = if wrap then downW   w h x y else downNW  w h x y
+left  w h wrap x y = if wrap then leftW   w h x y else leftNW  w h x y
 right w h wrap x y = if wrap then rightW  w h x y else rightNW w h x y
 {-# INLINE up    #-}
 {-# INLINE down  #-}

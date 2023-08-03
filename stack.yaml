@@ -1,8 +1,9 @@
 flags: {}
 extra-package-dbs: []
 packages:
-- '.'
-#- 'mwc-random'
+  - '.'
+  #- 'mwc-random'
+  - '../Juicy.Pixels'
 extra-deps:
-- AC-Random-0.1
+  - AC-Random-0.1
 resolver: lts-9.6

@@ -54,7 +54,7 @@ randomColourSequence rng0 = (CS $ map toRGB $ genWords rng5, rng6)
     genWords !rng = let (word, rng') = bounded_random rng
                     in word:genWords rng'
 
-      
+
 toRGB :: Word32 -> PixelRGBA8
 toRGB !n  = let !r = fromIntegral $ n `shiftR` 16 .&. 0xff
                 !g = fromIntegral $ n `shiftR` 8  .&. 0xff
